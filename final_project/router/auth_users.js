@@ -80,6 +80,39 @@ regd_users.put("/auth/review/:isbn", (req, res) => {
       });
   });
 
+// Delete a book review (only the logged-in user's review)
+regd_users.delete("/auth/review/:isbn", (req, res) => {
+    // 1) Auth check
+    const auth = req.session && req.session.authorization;
+    if (!auth || !auth.username) {
+      return res.status(401).json({ message: "Unauthorized: please log in first." });
+    }
+    const username = auth.username;
+  
+    // 2) ISBN from params
+    const isbn = req.params.isbn;
+  
+    // 3) Find book (your books are keyed by 1..10; ISBN is inside the object)
+    const bookKey = Object.keys(books).find(key => books[key].isbn === isbn);
+    if (!bookKey) {
+      return res.status(404).json({ message: `Book with ISBN ${isbn} not found.` });
+    }
+    const book = books[bookKey];
+  
+    // 4) Ensure reviews exist and the user's review is present
+    if (!book.reviews || !Object.prototype.hasOwnProperty.call(book.reviews, username)) {
+      return res.status(404).json({ message: "No review by this user to delete." });
+    }
+  
+    // 5) Delete only this user's review
+    delete book.reviews[username];
+  
+    return res.status(200).json({
+      message: "Review deleted.",
+      reviews: book.reviews
+    });
+  });
+
 module.exports.authenticated = regd_users;
 module.exports.isValid = isValid;
 module.exports.users = users;
